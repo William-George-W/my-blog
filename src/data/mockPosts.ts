@@ -618,6 +618,192 @@ const city = user && user.address && user.address.city
   : "未知城市";</code></pre>
       <p>将这些 ES6+ 特性融入日常开发，代码的可读性和健壮性都将得到显著提升——这也是在"职引星"和"photolog"项目开发中，我们团队的重要编码规范之一。</p>
     `
+  },
+  {
+    id: "go-lang-intro",
+    title: "Go 语言入门精讲：为什么我选择用 Go 构建 photolog 的后端服务？",
+    excerpt: "作为一门生来为并发而设计的语言，Go 以极简的语法、强悍的性能和内建的 goroutine 并发原语，成为构建高性能后端服务的利器。本文分享我从零上手 Go 并将其用于 photolog 项目的实战心得。",
+    date: "2025-07-10",
+    readTime: "6 min read",
+    category: "Go",
+    tags: ["Go", "Golang", "后端开发", "并发", "photolog"],
+    gradient: "linear-gradient(135deg, #00b09b 0%, #96c93d 100%)",
+    likes: 44,
+    imageUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80",
+    content: `
+      <p>在开发 <strong>photolog</strong> 照片日志项目时，我需要为前端 React 应用搭建一套后端 REST API。最初我考虑过 Node.js + Express，但在调研了一段时间后，我选择了 <strong>Go（Golang）</strong>——这个决定让我对后端开发有了全新的认知。</p>
+
+      <h2>1. 为什么选择 Go？</h2>
+      <p>Go 语言由 Google 于 2009 年发布，专为现代多核服务器场景设计。与 Node.js 相比，它有几个核心优势：</p>
+      <ul>
+        <li><strong>编译型语言，性能接近 C</strong>：Go 代码直接编译为二进制，无需运行时解释，在 IO 密集的图片上传场景下吞吐量显著高于 Node.js。</li>
+        <li><strong>天生并发（goroutine）</strong>：Go 的并发模型基于轻量级 goroutine，创建成本极低（2KB 栈），非常适合同时处理大量图片上传请求。</li>
+        <li><strong>极简依赖，部署方便</strong>：编译产物是单个可执行文件，不需要 node_modules，部署到服务器只需一步。</li>
+        <li><strong>强类型 + 编译检查</strong>：类型错误在编译期就暴露，线上事故率远低于动态语言。</li>
+      </ul>
+
+      <h2>2. Go 核心语法快速上手</h2>
+      <p>Go 的语法极度精简，没有类（class），用结构体（struct）和方法（method）替代：</p>
+      <pre><code>package main
+
+import "fmt"
+
+// 结构体定义（类似其他语言的 class）
+type Photo struct {
+  ID       int
+  Filename string
+  Caption  string
+  CreatedAt string
+}
+
+// 方法绑定在结构体上
+func (p Photo) Display() string {
+  return fmt.Sprintf("[%d] %s - %s", p.ID, p.Filename, p.Caption)
+}
+
+func main() {
+  photo := Photo{ID: 1, Filename: "sunset.jpg", Caption: "深圳湾落日"}
+  fmt.Println(photo.Display())
+  // 输出：[1] sunset.jpg - 深圳湾落日
+}</code></pre>
+
+      <h2>3. goroutine：Go 并发的秘密武器</h2>
+      <p>在 photolog 中，用户上传照片后需要同时完成：保存原图、生成缩略图、写入数据库。如果串行执行，响应时间会很长。用 goroutine 可以轻松并发处理：</p>
+      <pre><code>import "sync"
+
+func processUpload(filename string) {
+  var wg sync.WaitGroup
+
+  // 并发执行三个任务
+  wg.Add(3)
+  go func() { defer wg.Done(); saveOriginal(filename) }()
+  go func() { defer wg.Done(); generateThumbnail(filename) }()
+  go func() { defer wg.Done(); saveToDatabase(filename) }()
+
+  wg.Wait() // 等待三个 goroutine 全部完成
+  fmt.Println("上传处理完成：", filename)
+}</code></pre>
+      <p>这段代码用不到 10 行实现了真正的并发处理，等效的 Node.js 版本需要 <code>Promise.all</code> 配合大量异步处理，代码复杂度明显更高。</p>
+
+      <h2>4. 总结：Go 让后端开发"回归简单"</h2>
+      <p>Go 的设计哲学是"少即是多"——没有继承、没有泛型过度设计（Go 1.18 才加入泛型）、没有异常体系，只有清晰的错误处理约定。这种极简哲学让 photolog 后端代码的可读性和可维护性都非常出色。对于想从前端拓展到后端的开发者，Go 是一门非常值得学习的语言。</p>
+    `
+  },
+  {
+    id: "go-rest-api",
+    title: "用 Go 从零搭建 REST API：photolog 后端服务实战全记录",
+    excerpt: "本文完整记录 photolog 照片日志项目 Go 后端的搭建过程，包括路由设计、MySQL 集成、文件上传接口、CORS 跨域处理，以及与 React 前端联调的完整工作流。",
+    date: "2025-07-20",
+    readTime: "8 min read",
+    category: "Go",
+    tags: ["Go", "REST API", "MySQL", "CORS", "全栈"],
+    gradient: "linear-gradient(135deg, #43cea2 0%, #185a9d 100%)",
+    likes: 39,
+    imageUrl: "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=800&auto=format&fit=crop&q=80",
+    content: `
+      <p>在 photolog 项目中，我使用 Go 语言的标准库 <code>net/http</code> 配合轻量级路由库 <strong>chi</strong> 搭建了 REST API 后端。本文将从项目结构到核心接口，完整还原这套后端服务的实现细节。</p>
+
+      <h2>1. 项目结构设计</h2>
+      <p>Go 项目遵循"按职责分包"的惯例，photolog 后端结构如下：</p>
+      <pre><code>photolog-api/
+├── main.go          # 程序入口，注册路由
+├── handler/
+│   ├── photo.go     # 照片相关接口处理器
+│   └── auth.go      # 鉴权处理器
+├── model/
+│   └── photo.go     # Photo 数据结构定义
+├── db/
+│   └── mysql.go     # MySQL 连接初始化
+└── middleware/
+    └── cors.go      # CORS 跨域中间件</code></pre>
+
+      <h2>2. 路由注册与 CORS 处理</h2>
+      <p>前后端分离项目最常见的联调问题就是跨域（CORS）。在 Go 中，我们通过自定义中间件统一处理：</p>
+      <pre><code>// middleware/cors.go
+func CORSMiddleware(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+    w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    if r.Method == "OPTIONS" {
+      w.WriteHeader(http.StatusNoContent)
+      return
+    }
+    next.ServeHTTP(w, r)
+  })
+}
+
+// main.go
+func main() {
+  r := chi.NewRouter()
+  r.Use(middleware.CORSMiddleware)
+  r.Post("/api/photos/upload", handler.UploadPhoto)
+  r.Get("/api/photos", handler.GetPhotos)
+  r.Delete("/api/photos/{id}", handler.DeletePhoto)
+  http.ListenAndServe(":8080", r)
+}</code></pre>
+
+      <h2>3. 文件上传接口实现</h2>
+      <p>photolog 最核心的接口是照片上传。Go 标准库原生支持 multipart 表单文件解析：</p>
+      <pre><code>// handler/photo.go
+func UploadPhoto(w http.ResponseWriter, r *http.Request) {
+  // 限制上传大小为 10MB
+  r.ParseMultipartForm(10 << 20)
+
+  file, header, err := r.FormFile("photo")
+  if err != nil {
+    http.Error(w, "文件读取失败", http.StatusBadRequest)
+    return
+  }
+  defer file.Close()
+
+  // 保存到 uploads 目录
+  savePath := "./uploads/" + header.Filename
+  dst, _ := os.Create(savePath)
+  defer dst.Close()
+  io.Copy(dst, file)
+
+  // 写入数据库
+  caption := r.FormValue("caption")
+  db.SavePhoto(header.Filename, caption)
+
+  w.Header().Set("Content-Type", "application/json")
+  json.NewEncoder(w).Encode(map[string]string{"status": "ok", "filename": header.Filename})
+}</code></pre>
+
+      <h2>4. MySQL 集成与数据查询</h2>
+      <p>Go 使用 <code>database/sql</code> 标准接口操作 MySQL，配合 <code>go-sql-driver/mysql</code> 驱动：</p>
+      <pre><code>// db/mysql.go
+import (
+  "database/sql"
+  _ "github.com/go-sql-driver/mysql"
+)
+
+var DB *sql.DB
+
+func Init() {
+  var err error
+  DB, err = sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/photolog")
+  if err != nil {
+    log.Fatal("数据库连接失败:", err)
+  }
+}
+
+func SavePhoto(filename, caption string) {
+  DB.Exec(
+    "INSERT INTO photos (filename, caption, created_at) VALUES (?, ?, NOW())",
+    filename, caption,
+  )
+}</code></pre>
+
+      <h2>5. 与 React 前端联调心得</h2>
+      <p>Go 后端与 React 前端联调过程中，我们总结了以下几条实践规范：</p>
+      <ul>
+        <li><strong>统一错误响应格式</strong>：所有接口无论成功还是失败，都返回 <code>{"status": "ok/error", "message": "..."}</code> 结构，让前端可以统一处理。</li>
+        <li><strong>接口文档先行</strong>：在写 Go 接口之前，先用 Markdown 约定好请求/响应字段，避免联调时"各自理解不同"的沟通成本。</li>
+        <li><strong>使用 Postman 先行验证</strong>：Go 接口完成后先用 Postman 测通，再对接前端，能大幅缩短联调排查时间。</li>
+      </ul>
+      <p>photolog 这个项目让我对"全栈开发"有了更深的体会：前后端分离不只是技术分层，更是一种协作契约。而 Go 凭借其简洁性与高性能，成为了我全栈工具箱中不可或缺的一员。</p>
+    `
   }
 ];
-
